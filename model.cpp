@@ -264,6 +264,26 @@ QAbstractItemModel* Model::topics() const
     return m_topics;
 }
 
+QString Model::channel(const QModelIndex& index) const
+{
+    if (!index.isValid())
+    {
+        return {};
+    }
+
+    return fetchShow(index.internalId(), std::mem_fn(&Show::channel));
+}
+
+QString Model::topic(const QModelIndex& index) const
+{
+    if (!index.isValid())
+    {
+        return {};
+    }
+
+    return fetchShow(index.internalId(), std::mem_fn(&Show::topic));
+}
+
 QString Model::title(const QModelIndex& index) const
 {
     if (!index.isValid())

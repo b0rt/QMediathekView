@@ -26,6 +26,7 @@ along with QMediathekView.  If not, see <http://www.gnu.org/licenses/>.
 #include <QDir>
 #include <QObject>
 #include <QStringList>
+#include <QVector>
 
 #include "schema.h"
 
@@ -33,6 +34,16 @@ class QSettings;
 
 namespace QMediathekView
 {
+
+struct Favorite
+{
+    QString name;
+
+    QString channel;
+    QString topic;
+    QString title;
+
+};
 
 class Settings : public QObject
 {
@@ -66,6 +77,9 @@ public:
 
     Url preferredUrl() const;
     void setPreferredUrl(const Url type);
+
+    QVector< Favorite > favorites() const;
+    void setFavorites(const QVector< Favorite >& favorites);
 
     QByteArray mainWindowGeometry() const;
     void setMainWindowGeometry(const QByteArray& geometry);

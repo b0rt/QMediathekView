@@ -27,6 +27,7 @@ along with QMediathekView.  If not, see <http://www.gnu.org/licenses/>.
 class QComboBox;
 class QLabel;
 class QLineEdit;
+class QMenu;
 class QTableView;
 class QTextEdit;
 class QTimer;
@@ -57,6 +58,10 @@ public:
 
 private:
     void livestreamPressed();
+    void populateFavoritesMenu();
+    void addFavoriteTriggered();
+    void addFavorite(const QString& channel, const QString& topic, const QString& title);
+    void applyFilter(const QString& channel, const QString& topic, const QString& title);
     void resetFilterPressed();
     void updateDatabasePressed();
     void editSettingsPressed();
@@ -89,6 +94,8 @@ private:
     QComboBox* m_channelBox;
     QComboBox* m_topicBox;
     QLineEdit* m_titleEdit;
+
+    QMenu* m_favoritesMenu;
 
     QTextEdit* m_descriptionEdit;
     QLabel* m_websiteLabel;

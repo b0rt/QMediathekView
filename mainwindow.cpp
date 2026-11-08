@@ -29,6 +29,7 @@ along with QMediathekView.  If not, see <http://www.gnu.org/licenses/>.
 #include <QFormLayout>
 #include <QGridLayout>
 #include <QHeaderView>
+#include <QInputDialog>
 #include <QLineEdit>
 #include <QLabel>
 #include <QMenu>
@@ -167,6 +168,15 @@ MainWindow::MainWindow(Settings& settings, Model& model, Application& applicatio
     livestreamButton->setToolTip(tr("Show livestreams"));
     buttonsLayout->addWidget(livestreamButton);
 
+    const auto favoritesButton = new QPushButton(QIcon::fromTheme(QStringLiteral("starred")), tr("Favorites"), buttonsWidget);
+    favoritesButton->setToolTip(tr("Apply or manage saved filters"));
+    buttonsLayout->addWidget(favoritesButton);
+
+    m_favoritesMenu = new QMenu(favoritesButton);
+    favoritesButton->setMenu(m_favoritesMenu);
+
+    connect(m_favoritesMenu, &QMenu::aboutToShow, this, &MainWindow::populateFavoritesMenu);
+
     const auto resetFilterButton = new QPushButton(QIcon::fromTheme(QStringLiteral("edit-clear")), QString(), buttonsWidget);
     buttonsLayout->addWidget(resetFilterButton);
 
@@ -263,9 +273,98 @@ void MainWindow::showDatabaseUpdateFailure(const QString& error)
 
 void MainWindow::livestreamPressed()
 {
-    m_channelBox->clearEditText();
-    m_topicBox->setEditText(QStringLiteral("Livestream"));
-    m_titleEdit->clear();
+    applyFilter(QString(), QStringLiteral("Livestream"), QString());
+}
+
+void MainWindow::applyFilter(const QString& channel, const QString& topic, const QString& title)
+{
+    // Changing the channel reloads the topics model which resets the editable topic box,
+    // so apply the channel first and only then set topic and title.
+    m_channelBox->setEditText(channel);
+
+    m_searchTimer->stop();
+    timeout();
+
+    m_topicBox->setEditText(topic);
+    m_titleEdit->setText(title);
+}
+
+void MainWindow::populateFavoritesMenu()
+{
+    m_favoritesMenu->clear();
+
+    const auto favorites = m_settings.favorites();
+
+    for (const auto& favorite : favorites)
+    {
+        connect(m_favoritesMenu->addAction(favorite.name), &QAction::triggered, [this, favorite]()
+        {
+            applyFilter(favorite.channel, favorite.topic, favorite.title);
+        });
+    }
+
+    if (!favorites.isEmpty())
+    {
+        m_favoritesMenu->addSeparator();
+    }
+
+    connect(m_favoritesMenu->addAction(QIcon::fromTheme(QStringLiteral("list-add")), tr("&Add current filter...")), &QAction::triggered, this, &MainWindow::addFavoriteTriggered);
+
+    const auto removeMenu = m_favoritesMenu->addMenu(QIcon::fromTheme(QStringLiteral("list-remove")), tr("&Remove"));
+    removeMenu->setEnabled(!favorites.isEmpty());
+
+    for (auto index = 0; index < favorites.size(); ++index)
+    {
+        connect(removeMenu->addAction(favorites.at(index).name), &QAction::triggered, [this, index]()
+        {
+            auto favorites = m_settings.favorites();
+            favorites.remove(index);
+            m_settings.setFavorites(favorites);
+        });
+    }
+}
+
+void MainWindow::addFavoriteTriggered()
+{
+    addFavorite(m_channelBox->currentText(), m_topicBox->currentText(), m_titleEdit->text());
+}
+
+void MainWindow::addFavorite(const QString& channel, const QString& topic, const QString& title)
+{
+    Favorite favorite;
+    favorite.channel = channel;
+    favorite.topic = topic;
+    favorite.title = title;
+
+    QStringList parts;
+
+    for (const auto& part : { favorite.channel, favorite.topic, favorite.title })
+    {
+        if (!part.isEmpty())
+        {
+            parts.append(part);
+        }
+    }
+
+    if (parts.isEmpty())
+    {
+        statusBar()->showMessage(tr("Cannot save an empty filter as favorite."), errorMessageTimeout);
+        return;
+    }
+
+    bool ok = false;
+    favorite.name = QInputDialog::getText(this, tr("Add favorite"), tr("Name"), QLineEdit::Normal, parts.join(QStringLiteral(" - ")), &ok).trimmed();
+
+    if (!ok || favorite.name.isEmpty())
+    {
+        return;
+    }
+
+    auto favorites = m_settings.favorites();
+    favorites.append(favorite);
+    m_settings.setFavorites(favorites);
+
+    statusBar()->showMessage(tr("Added favorite \"%1\".").arg(favorite.name), messageTimeout);
 }
 
 void MainWindow::resetFilterPressed()
@@ -377,6 +476,13 @@ void MainWindow::customContextMenuRequested(const QPoint& pos)
     }
 
     QMenu menu;
+
+    connect(menu.addAction(QIcon::fromTheme(QStringLiteral("starred")), tr("Add &topic to favorites...")), &QAction::triggered, [this, index]()
+    {
+        addFavorite(m_model.channel(index), m_model.topic(index), QString());
+    });
+
+    menu.addSeparator();
 
     connect(menu.addAction(tr("&Copy link")), &QAction::triggered, [this]()
     {

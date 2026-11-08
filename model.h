@@ -62,6 +62,8 @@ public:
     QAbstractItemModel* topics() const;
 
 public:
+    QString channel(const QModelIndex& index) const;
+    QString topic(const QModelIndex& index) const;
     QString title(const QModelIndex& index) const;
 
     QString description(const QModelIndex& index) const;

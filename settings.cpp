@@ -49,6 +49,12 @@ DEFINE_KEY(downloadFolder);
 
 DEFINE_KEY(preferredUrl);
 
+DEFINE_KEY(favorites);
+DEFINE_KEY(name);
+DEFINE_KEY(channel);
+DEFINE_KEY(topic);
+DEFINE_KEY(title);
+
 DEFINE_KEY(mainWindowGeometry);
 DEFINE_KEY(mainWindowState);
 
@@ -161,6 +167,51 @@ Url Settings::preferredUrl() const
 void Settings::setPreferredUrl(const Url type)
 {
     m_settings->setValue(Keys::preferredUrl, int(type));
+}
+
+QVector< Favorite > Settings::favorites() const
+{
+    QVector< Favorite > favorites;
+
+    const auto size = m_settings->beginReadArray(Keys::favorites);
+    favorites.reserve(size);
+
+    for (auto index = 0; index < size; ++index)
+    {
+        m_settings->setArrayIndex(index);
+
+        Favorite favorite;
+        favorite.name = m_settings->value(Keys::name).toString();
+        favorite.channel = m_settings->value(Keys::channel).toString();
+        favorite.topic = m_settings->value(Keys::topic).toString();
+        favorite.title = m_settings->value(Keys::title).toString();
+
+        favorites.append(favorite);
+    }
+
+    m_settings->endArray();
+
+    return favorites;
+}
+
+void Settings::setFavorites(const QVector< Favorite >& favorites)
+{
+    m_settings->remove(Keys::favorites);
+
+    m_settings->beginWriteArray(Keys::favorites, favorites.size());
+
+    for (auto index = 0; index < favorites.size(); ++index)
+    {
+        m_settings->setArrayIndex(index);
+
+        const auto& favorite = favorites.at(index);
+        m_settings->setValue(Keys::name, favorite.name);
+        m_settings->setValue(Keys::channel, favorite.channel);
+        m_settings->setValue(Keys::topic, favorite.topic);
+        m_settings->setValue(Keys::title, favorite.title);
+    }
+
+    m_settings->endArray();
 }
 
 QByteArray Settings::mainWindowGeometry() const
